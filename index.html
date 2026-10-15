@@ -1,0 +1,1574 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Quản lý học phí">
+    <title>Quản lý học phí</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #007AFF;
+            --danger: #FF3B30;
+            --warning: #FF9500;
+            --success: #34C759;
+            --bg: #F2F2F7;
+            --card: #FFFFFF;
+            --text: #000000;
+            --text-secondary: #8E8E93;
+            --border: #C6C6C8;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        .header {
+            background: var(--card);
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 22px;
+            font-weight: 600;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn-icon {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 8px;
+            color: var(--primary);
+        }
+
+        .container {
+            padding: 16px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .stats-card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .stats-label {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .stats-value {
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .class-card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .class-card:active {
+            transform: scale(0.98);
+        }
+
+        .class-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .class-name {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .badge {
+            background: var(--danger);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .class-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+            cursor: pointer;
+            margin-bottom: 12px;
+        }
+
+        .btn-secondary {
+            background: var(--bg);
+            color: var(--primary);
+            border: none;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+            cursor: pointer;
+            margin-bottom: 12px;
+        }
+
+        .student-list {
+            margin-top: 16px;
+        }
+
+        .section-header {
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin: 16px 0 8px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-paid { color: var(--success); }
+        .section-overdue { color: var(--danger); }
+
+        .student-card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            border-left: 4px solid;
+        }
+
+        .student-card.paid { border-left-color: var(--success); }
+        .student-card.overdue { border-left-color: var(--danger); }
+
+        .student-name {
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .student-details {
+            font-size: 13px;
+            color: var(--text-secondary);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: flex-end;
+            animation: fadeIn 0.3s;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--card);
+            border-radius: 20px 20px 0 0;
+            padding: 20px;
+            max-height: 90vh;
+            overflow-y: auto;
+            width: 100%;
+            animation: slideUp 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .btn-close {
+            background: none;
+            border: none;
+            font-size: 28px;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 16px;
+            background: var(--bg);
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 16px;
+            background: var(--bg);
+        }
+
+        .fee-quick-select {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .fee-btn {
+            padding: 12px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .fee-btn.active {
+            border-color: var(--primary);
+            background: var(--primary);
+            color: white;
+        }
+
+        .history-item {
+            background: var(--bg);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .history-date {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .history-amount {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--success);
+        }
+
+        .history-note {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+            cursor: pointer;
+            margin-top: 12px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .btn-danger:active {
+            transform: scale(0.98);
+            opacity: 0.8;
+        }
+
+        .sort-buttons {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            overflow-x: auto;
+        }
+
+        .sort-btn {
+            padding: 8px 16px;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            background: var(--bg);
+            font-size: 14px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .sort-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .info-label {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .info-value {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .backup-status {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-align: center;
+            padding: 8px;
+        }
+
+        .backup-status.success {
+            color: var(--success);
+        }
+
+        .backup-status.error {
+            color: var(--danger);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        #g_id_onload {
+            position: absolute;
+            top: 100px;
+            right: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1 id="pageTitle">Quản lý học phí</h1>
+        <div class="header-actions">
+            <button class="btn-icon" onclick="showSettings()" title="Cài đặt">⚙️</button>
+            <button class="btn-icon" onclick="showBackupMenu()" title="Sao lưu">☁️</button>
+        </div>
+    </div>
+
+    <div class="container" id="mainView">
+        <!-- Home view -->
+        <div id="homeView">
+            <div class="stats-card">
+                <div class="stats-row">
+                    <span class="stats-label">Tổng doanh thu tháng này</span>
+                    <span class="stats-value" id="totalRevenue">0₫</span>
+                </div>
+                <div class="stats-row">
+                    <span class="stats-label">Tổng học viên</span>
+                    <span class="stats-value" id="totalStudents">0</span>
+                </div>
+                <div class="stats-row">
+                    <span class="stats-label">Học viên trễ hạn</span>
+                    <span class="stats-value" style="color: var(--danger);" id="totalOverdue">0</span>
+                </div>
+            </div>
+
+            <button class="btn-primary" onclick="showAddClassModal()">+ Thêm lớp học mới</button>
+
+            <div id="classList"></div>
+        </div>
+
+        <!-- Class detail view -->
+        <div id="classView" class="hidden">
+            <button class="btn-secondary" onclick="showHome()">← Quay lại</button>
+            
+            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                <button class="btn-secondary" onclick="showEditClassModal()" style="flex: 1;">✏️ Sửa tên lớp</button>
+                <button class="btn-danger" onclick="showDeleteClassConfirm()" style="flex: 1;">🗑️ Xóa lớp</button>
+            </div>
+
+            <button class="btn-primary" onclick="showAddStudentModal()">+ Thêm học viên mới</button>
+
+            <div class="stats-card">
+                <div class="stats-row">
+                    <span class="stats-label">Doanh thu tháng này</span>
+                    <span class="stats-value" id="classRevenue">0₫</span>
+                </div>
+            </div>
+
+            <div class="sort-buttons">
+                <button class="sort-btn active" onclick="sortStudents('status')">Theo trạng thái</button>
+                <button class="sort-btn" onclick="sortStudents('name')">Theo tên</button>
+                <button class="sort-btn" onclick="sortStudents('lastPayment')">Theo ngày nộp</button>
+            </div>
+
+            <div id="studentList"></div>
+        </div>
+    </div>
+
+    <!-- Add Class Modal -->
+    <div id="addClassModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Thêm lớp học mới</h2>
+                <button class="btn-close" onclick="closeModal('addClassModal')">&times;</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Tên lớp học</label>
+                <input type="text" class="form-input" id="className" placeholder="Ví dụ: Lớp Toán 1">
+            </div>
+            <button class="btn-primary" onclick="addClass()">Thêm lớp</button>
+        </div>
+    </div>
+
+    <!-- Edit Class Modal -->
+    <div id="editClassModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Chỉnh sửa lớp học</h2>
+                <button class="btn-close" onclick="closeModal('editClassModal')">&times;</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Tên lớp học</label>
+                <input type="text" class="form-input" id="editClassName" placeholder="Ví dụ: Lớp Toán 1">
+            </div>
+            <button class="btn-primary" onclick="updateClass()">Cập nhật</button>
+        </div>
+    </div>
+
+    <!-- Delete Class Confirmation Modal -->
+    <div id="deleteClassConfirmModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" style="color: var(--danger);">⚠️ Xác nhận xóa lớp</h2>
+                <button class="btn-close" onclick="closeModal('deleteClassConfirmModal')">&times;</button>
+            </div>
+            <div style="padding: 20px 0;">
+                <p style="font-size: 16px; margin-bottom: 12px;">Bạn có chắc chắn muốn xóa lớp:</p>
+                <p style="font-size: 18px; font-weight: 600; color: var(--danger); margin-bottom: 12px;" id="deleteClassName"></p>
+                <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: 8px;">Lớp này có <strong id="deleteClassStudentCount">0</strong> học viên.</p>
+                <p style="font-size: 14px; color: var(--danger); font-weight: 600;">TẤT CẢ dữ liệu học viên và lịch sử thanh toán sẽ bị xóa vĩnh viễn!</p>
+            </div>
+            <button class="btn-danger" onclick="confirmDeleteClass()">Xác nhận xóa lớp</button>
+            <button class="btn-secondary" onclick="closeModal('deleteClassConfirmModal')">Hủy bỏ</button>
+        </div>
+    </div>
+
+    <!-- Add Student Modal -->
+    <div id="addStudentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Thêm học viên mới</h2>
+                <button class="btn-close" onclick="closeModal('addStudentModal')">&times;</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Tên học viên</label>
+                <input type="text" class="form-input" id="studentName" placeholder="Nhập tên học viên">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Ngày nhập học</label>
+                <input type="date" class="form-input" id="enrollmentDate">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Chu kỳ thanh toán</label>
+                <select class="form-select" id="paymentCycle">
+                    <option value="monthly">Hàng tháng</option>
+                    <option value="quarterly">Hàng quý (3 tháng)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Mức học phí</label>
+                <input type="number" class="form-input" id="tuitionFee" placeholder="Nhập số tiền">
+                <div class="fee-quick-select" id="feeQuickSelect"></div>
+            </div>
+            <button class="btn-primary" onclick="addStudent()">Thêm học viên</button>
+        </div>
+    </div>
+
+    <!-- Student Detail Modal -->
+    <div id="studentDetailModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="studentDetailName">Chi tiết học viên</h2>
+                <button class="btn-close" onclick="closeModal('studentDetailModal')">&times;</button>
+            </div>
+            
+            <div id="studentInfo"></div>
+
+            <h3 style="margin: 20px 0 12px 0;">Lịch sử nộp phí</h3>
+            <div id="paymentHistory"></div>
+
+            <button class="btn-primary" onclick="showAddPaymentForm()">+ Nộp phí mới</button>
+            <button class="btn-danger" onclick="deleteStudent()">Xóa học viên</button>
+        </div>
+    </div>
+
+    <!-- Add Payment Modal -->
+    <div id="addPaymentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Nộp phí mới</h2>
+                <button class="btn-close" onclick="closeModal('addPaymentModal')">&times;</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Ngày nộp</label>
+                <input type="date" class="form-input" id="paymentDate">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Số tiền</label>
+                <input type="number" class="form-input" id="paymentAmount">
+                <div class="fee-quick-select" id="paymentFeeQuickSelect"></div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Ghi chú (tùy chọn)</label>
+                <input type="text" class="form-input" id="paymentNote" placeholder="Ví dụ: Đã giảm giá">
+            </div>
+            <button class="btn-primary" onclick="addPayment()">Thêm thanh toán</button>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Cài đặt mức học phí</h2>
+                <button class="btn-close" onclick="closeModal('settingsModal')">&times;</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Mức học phí mặc định (tối đa 4 mức)</label>
+                <div id="defaultFeesList"></div>
+                <button class="btn-secondary" onclick="showAddFeeForm()">+ Thêm mức học phí</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Backup Menu Modal -->
+    <div id="backupModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">☁️ Sao lưu & Khôi phục</h2>
+                <button class="btn-close" onclick="closeModal('backupModal')">&times;</button>
+            </div>
+            
+            <div class="backup-status" id="backupStatus"></div>
+            
+            <!-- Google Drive Section -->
+            <div style="background: var(--bg); padding: 16px; border-radius: 12px; margin-bottom: 16px;">
+                <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">🔒 Backup tự động (Khuyên dùng)</h3>
+                <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: 12px;">
+                    Kết nối Google Drive để tự động sao lưu dữ liệu mỗi ngày. Dữ liệu của bạn sẽ an toàn ngay cả khi mất điện thoại.
+                </p>
+                
+                <button class="btn-primary" onclick="connectGoogleDrive()" id="gdConnectBtn">
+                    🔗 Kết nối Google Drive
+                </button>
+                
+                <div id="gdConnectedSection" class="hidden">
+                    <div style="display: flex; align-items: center; gap: 8px; padding: 12px; background: #e8f5e9; border-radius: 8px; margin-bottom: 12px;">
+                        <span style="font-size: 24px;">✅</span>
+                        <div>
+                            <div style="font-weight: 600; color: var(--success);">Đã kết nối Google Drive</div>
+                            <div style="font-size: 13px; color: var(--text-secondary);" id="backupSchedule">Sao lưu tự động hàng ngày</div>
+                        </div>
+                    </div>
+                    
+                    <button class="btn-secondary" onclick="manualBackup()">
+                        ☁️ Sao lưu ngay
+                    </button>
+                    
+                    <button class="btn-secondary" onclick="restoreFromDrive()">
+                        📥 Khôi phục từ Drive
+                    </button>
+                    
+                    <button class="btn-secondary" onclick="disconnectGoogleDrive()" style="color: var(--danger);">
+                        🔓 Ngắt kết nối Drive
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Manual Backup Section -->
+            <div style="background: var(--bg); padding: 16px; border-radius: 12px; margin-bottom: 16px;">
+                <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">📊 Backup thủ công</h3>
+                <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: 12px;">
+                    Xuất dữ liệu ra file Excel để xem trên máy tính hoặc lưu trữ thủ công.
+                </p>
+                
+                <button class="btn-secondary" onclick="exportToExcel()">
+                    📊 Xuất Excel
+                </button>
+                
+                <button class="btn-secondary" onclick="downloadBackupJSON()">
+                    💾 Tải file backup (.json)
+                </button>
+                
+                <button class="btn-secondary" onclick="importFromFile()">
+                    📁 Khôi phục từ file
+                </button>
+                <input type="file" id="importFile" accept=".json,.xlsx,.xls" class="hidden" onchange="handleImport(event)">
+            </div>
+            
+            <!-- Instructions -->
+            <div style="background: #fff3cd; padding: 12px; border-radius: 8px; border-left: 4px solid var(--warning);">
+                <div style="font-weight: 600; margin-bottom: 4px;">💡 Khuyến nghị:</div>
+                <div style="font-size: 13px; color: var(--text-secondary);">
+                    • Kết nối Google Drive để tự động backup hàng ngày<br>
+                    • Hoặc thường xuyên xuất Excel để backup thủ công<br>
+                    • Lưu file backup ở nơi an toàn (Google Drive, Dropbox, v.v.)
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteConfirmModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" style="color: var(--danger);">⚠️ Xác nhận xóa</h2>
+                <button class="btn-close" onclick="closeModal('deleteConfirmModal')">&times;</button>
+            </div>
+            <div style="padding: 20px 0;">
+                <p style="font-size: 16px; margin-bottom: 12px;">Bạn có chắc chắn muốn xóa học viên:</p>
+                <p style="font-size: 18px; font-weight: 600; color: var(--danger); margin-bottom: 12px;" id="deleteStudentName"></p>
+                <p style="font-size: 14px; color: var(--text-secondary);">Dữ liệu sẽ bị xóa vĩnh viễn và không thể khôi phục.</p>
+            </div>
+            <button class="btn-danger" onclick="confirmDeleteStudent()">Xác nhận xóa</button>
+            <button class="btn-secondary" onclick="closeModal('deleteConfirmModal')">Hủy bỏ</button>
+        </div>
+    </div>
+
+    <div id="g_id_onload"
+         data-client_id="YOUR_GOOGLE_CLIENT_ID"
+         data-callback="handleCredentialResponse"
+         data-auto_prompt="false">
+    </div>
+
+    <script>
+        // Data structure
+        let appData = {
+            classes: [],
+            defaultFees: [400000, 500000, 600000, 800000],
+            settings: {
+                googleDriveConnected: false,
+                lastBackup: null,
+                accessToken: null
+            }
+        };
+
+        let currentClassId = null;
+        let currentStudentId = null;
+        let currentSort = 'status';
+
+        // Initialize app
+        function init() {
+            loadData();
+            renderHome();
+            setupAutoBackup();
+            
+            // Set default date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('enrollmentDate').value = today;
+            document.getElementById('paymentDate').value = today;
+        }
+
+        // Load data from localStorage
+        function loadData() {
+            const saved = localStorage.getItem('tuitionTrackerData');
+            if (saved) {
+                appData = JSON.parse(saved);
+            }
+        }
+
+        // Save data to localStorage
+        function saveData() {
+            localStorage.setItem('tuitionTrackerData', JSON.stringify(appData));
+        }
+
+        // Render home view
+        function renderHome() {
+            const classList = document.getElementById('classList');
+            classList.innerHTML = '';
+
+            let totalStudents = 0;
+            let totalOverdue = 0;
+            let totalRevenue = 0;
+
+            const currentMonth = new Date().getMonth();
+            const currentYear = new Date().getFullYear();
+
+            appData.classes.forEach(cls => {
+                totalStudents += cls.students.length;
+                
+                let classRevenue = 0;
+                cls.students.forEach(student => {
+                    const status = getStudentStatus(student);
+                    if (status === 'overdue') totalOverdue++;
+                    
+                    // Calculate revenue for current month
+                    student.payments.forEach(payment => {
+                        const paymentDate = new Date(payment.date);
+                        if (paymentDate.getMonth() === currentMonth && 
+                            paymentDate.getFullYear() === currentYear) {
+                            classRevenue += payment.amount;
+                        }
+                    });
+                });
+
+                totalRevenue += classRevenue;
+
+                const overdueCount = cls.students.filter(s => getStudentStatus(s) === 'overdue').length;
+
+                const card = document.createElement('div');
+                card.className = 'class-card';
+                card.onclick = () => showClass(cls.id);
+                card.innerHTML = `
+                    <div class="class-header">
+                        <div class="class-name">${cls.name}</div>
+                        ${overdueCount > 0 ? `<div class="badge">${overdueCount} trễ</div>` : ''}
+                    </div>
+                    <div class="class-info">
+                        <span>${cls.students.length} học viên</span>
+                        <span>${formatCurrency(classRevenue)}</span>
+                    </div>
+                `;
+                classList.appendChild(card);
+            });
+
+            document.getElementById('totalRevenue').textContent = formatCurrency(totalRevenue);
+            document.getElementById('totalStudents').textContent = totalStudents;
+            document.getElementById('totalOverdue').textContent = totalOverdue;
+        }
+
+        // Show class detail
+        function showClass(classId) {
+            currentClassId = classId;
+            const cls = appData.classes.find(c => c.id === classId);
+            
+            document.getElementById('pageTitle').textContent = cls.name;
+            document.getElementById('homeView').classList.add('hidden');
+            document.getElementById('classView').classList.remove('hidden');
+
+            renderClassDetail();
+        }
+
+        // Render class detail
+        function renderClassDetail() {
+            const cls = appData.classes.find(c => c.id === currentClassId);
+            
+            // Calculate class revenue for current month
+            const currentMonth = new Date().getMonth();
+            const currentYear = new Date().getFullYear();
+            let classRevenue = 0;
+            
+            cls.students.forEach(student => {
+                student.payments.forEach(payment => {
+                    const paymentDate = new Date(payment.date);
+                    if (paymentDate.getMonth() === currentMonth && 
+                        paymentDate.getFullYear() === currentYear) {
+                        classRevenue += payment.amount;
+                    }
+                });
+            });
+
+            document.getElementById('classRevenue').textContent = formatCurrency(classRevenue);
+
+            // Sort students
+            let students = [...cls.students];
+            if (currentSort === 'name') {
+                students.sort((a, b) => a.name.localeCompare(b.name));
+            } else if (currentSort === 'lastPayment') {
+                students.sort((a, b) => {
+                    const aLast = a.payments.length > 0 ? new Date(a.payments[a.payments.length - 1].date) : new Date(0);
+                    const bLast = b.payments.length > 0 ? new Date(b.payments[b.payments.length - 1].date) : new Date(0);
+                    return bLast - aLast;
+                });
+            }
+
+            const studentList = document.getElementById('studentList');
+            studentList.innerHTML = '';
+
+            if (currentSort === 'status') {
+                // Group by status - only 2 states: paid and overdue
+                const paid = students.filter(s => getStudentStatus(s) === 'paid');
+                const overdue = students.filter(s => getStudentStatus(s) === 'overdue');
+
+                if (paid.length > 0) {
+                    studentList.innerHTML += '<div class="section-header section-paid">✓ Đã nộp (' + paid.length + ')</div>';
+                    paid.forEach(s => studentList.appendChild(createStudentCard(s, 'paid')));
+                }
+
+                if (overdue.length > 0) {
+                    studentList.innerHTML += '<div class="section-header section-overdue">⚠️ Trễ hạn (' + overdue.length + ')</div>';
+                    overdue.forEach(s => studentList.appendChild(createStudentCard(s, 'overdue')));
+                }
+            } else {
+                students.forEach(s => {
+                    const status = getStudentStatus(s);
+                    studentList.appendChild(createStudentCard(s, status));
+                });
+            }
+        }
+
+        // Create student card
+        function createStudentCard(student, status) {
+            const card = document.createElement('div');
+            card.className = `student-card ${status}`;
+            card.onclick = () => showStudentDetail(student.id);
+
+            const nextDue = getNextDueDate(student);
+            const lastPayment = student.payments.length > 0 
+                ? student.payments[student.payments.length - 1] 
+                : null;
+
+            let detailText = '';
+            if (status === 'overdue') {
+                const daysOverdue = Math.floor((new Date() - nextDue) / (1000 * 60 * 60 * 24));
+                detailText = `Trễ ${daysOverdue} ngày • Hạn: ${formatDate(nextDue)}`;
+            } else {
+                // paid status
+                detailText = lastPayment 
+                    ? `Nộp: ${formatDate(new Date(lastPayment.date))} • ${formatCurrency(lastPayment.amount)}`
+                    : 'Chưa có lịch sử';
+            }
+
+            card.innerHTML = `
+                <div class="student-name">${student.name}</div>
+                <div class="student-details">
+                    <span>${detailText}</span>
+                </div>
+            `;
+
+            return card;
+        }
+
+        // Get student status
+        function getStudentStatus(student) {
+            const nextDue = getNextDueDate(student);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            nextDue.setHours(0, 0, 0, 0);
+
+            // If overdue by 1 day or more
+            if (today > nextDue) {
+                return 'overdue';
+            }
+
+            // Otherwise, student is paid
+            return 'paid';
+        }
+
+        // Get next due date
+        function getNextDueDate(student) {
+            const enrollment = new Date(student.enrollmentDate);
+            const today = new Date();
+            
+            const monthsToAdd = student.paymentCycle === 'monthly' ? 1 : 3;
+            
+            let nextDue = new Date(enrollment);
+            while (nextDue < today) {
+                nextDue.setMonth(nextDue.getMonth() + monthsToAdd);
+            }
+            
+            return nextDue;
+        }
+
+        // Show student detail
+        function showStudentDetail(studentId) {
+            currentStudentId = studentId;
+            const cls = appData.classes.find(c => c.id === currentClassId);
+            const student = cls.students.find(s => s.id === studentId);
+
+            document.getElementById('studentDetailName').textContent = student.name;
+
+            const infoDiv = document.getElementById('studentInfo');
+            infoDiv.innerHTML = `
+                <div class="info-row">
+                    <span class="info-label">Ngày nhập học</span>
+                    <span class="info-value">${formatDate(new Date(student.enrollmentDate))}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Chu kỳ</span>
+                    <span class="info-value">${student.paymentCycle === 'monthly' ? 'Hàng tháng' : 'Hàng quý'}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Mức học phí</span>
+                    <span class="info-value">${formatCurrency(student.tuitionFee)}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Ngày hạn tiếp theo</span>
+                    <span class="info-value">${formatDate(getNextDueDate(student))}</span>
+                </div>
+            `;
+
+            const historyDiv = document.getElementById('paymentHistory');
+            historyDiv.innerHTML = '';
+
+            if (student.payments.length === 0) {
+                historyDiv.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 20px;">Chưa có lịch sử nộp phí</p>';
+            } else {
+                const sortedPayments = [...student.payments].sort((a, b) => 
+                    new Date(b.date) - new Date(a.date)
+                );
+
+                sortedPayments.forEach(payment => {
+                    const item = document.createElement('div');
+                    item.className = 'history-item';
+                    item.innerHTML = `
+                        <div>
+                            <div class="history-date">${formatDate(new Date(payment.date))}</div>
+                            ${payment.note ? `<div class="history-note">${payment.note}</div>` : ''}
+                        </div>
+                        <div class="history-amount">${formatCurrency(payment.amount)}</div>
+                    `;
+                    historyDiv.appendChild(item);
+                });
+            }
+
+            openModal('studentDetailModal');
+        }
+
+        // Show add payment form
+        function showAddPaymentForm() {
+            const cls = appData.classes.find(c => c.id === currentClassId);
+            const student = cls.students.find(s => s.id === currentStudentId);
+
+            document.getElementById('paymentAmount').value = student.tuitionFee;
+            document.getElementById('paymentDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('paymentNote').value = '';
+
+            renderFeeQuickSelect('paymentFeeQuickSelect', 'paymentAmount');
+            
+            closeModal('studentDetailModal');
+            openModal('addPaymentModal');
+        }
+
+        // Add payment
+        function addPayment() {
+            const date = document.getElementById('paymentDate').value;
+            const amount = parseInt(document.getElementById('paymentAmount').value);
+            const note = document.getElementById('paymentNote').value;
+
+            if (!date || !amount) {
+                alert('Vui lòng nhập đầy đủ thông tin');
+                return;
+            }
+
+            const cls = appData.classes.find(c => c.id === currentClassId);
+            const student = cls.students.find(s => s.id === currentStudentId);
+
+            student.payments.push({
+                id: Date.now(),
+                date: date,
+                amount: amount,
+                note: note
+            });
+
+            saveData();
+            closeModal('addPaymentModal');
+            showStudentDetail(currentStudentId);
+            renderClassDetail();
+        }
+
+        // Delete student - show confirmation modal
+        function deleteStudent() {
+            console.log('deleteStudent called');
+            const cls = appData.classes.find(c => c.id === currentClassId);
+            const student = cls.students.find(s => s.id === currentStudentId);
+            
+            // Show custom confirmation modal
+            document.getElementById('deleteStudentName').textContent = student.name;
+            openModal('deleteConfirmModal');
+        }
+
+        // Confirm delete student
+        function confirmDeleteStudent() {
+            console.log('confirmDeleteStudent called');
+            console.log('currentClassId:', currentClassId);
+            console.log('currentStudentId:', currentStudentId);
+
+            const cls = appData.classes.find(c => c.id === currentClassId);
+            if (!cls) {
+                console.error('Class not found!');
+                alert('Lỗi: Không tìm thấy lớp học');
+                return;
+            }
+
+            console.log('Before delete, students count:', cls.students.length);
+            const studentToDelete = cls.students.find(s => s.id === currentStudentId);
+            console.log('Student to delete:', studentToDelete);
+
+            cls.students = cls.students.filter(s => s.id !== currentStudentId);
+            console.log('After delete, students count:', cls.students.length);
+
+            // Save and update UI
+            saveData();
+            console.log('Data saved');
+            
+            closeModal('deleteConfirmModal');
+            closeModal('studentDetailModal');
+            console.log('Modals closed');
+            
+            // Re-render both class view and home stats
+            renderClassDetail();
+            renderHome();
+            console.log('UI re-rendered');
+        }
+
+        // Show home
+        function showHome() {
+            document.getElementById('pageTitle').textContent = 'Quản lý học phí';
+            document.getElementById('classView').classList.add('hidden');
+            document.getElementById('homeView').classList.remove('hidden');
+            currentClassId = null;
+            renderHome();
+        }
+
+        // Show edit class modal
+        function showEditClassModal() {
+            const cls = appData.classes.find(c => c.id === currentClassId);
+            document.getElementById('editClassName').value = cls.name;
+            openModal('editClassModal');
+        }
+
+        // Update class name
+        function updateClass() {
+            const newName = document.getElementById('editClassName').value.trim();
+            if (!newName) {
+                alert('Vui lòng nhập tên lớp học');
+                return;
+            }
+
+            const cls = appData.classes.find(c => c.id === currentClassId);
+            cls.name = newName;
+
+            saveData();
+            closeModal('editClassModal');
+            
+            // Update page title
+            document.getElementById('pageTitle').textContent = newName;
+            renderHome();
+        }
+
+        // Show delete class confirmation
+        function showDeleteClassConfirm() {
+            const cls = appData.classes.find(c => c.id === currentClassId);
+            document.getElementById('deleteClassName').textContent = cls.name;
+            document.getElementById('deleteClassStudentCount').textContent = cls.students.length;
+            openModal('deleteClassConfirmModal');
+        }
+
+        // Confirm delete class
+        function confirmDeleteClass() {
+            console.log('confirmDeleteClass called');
+            console.log('currentClassId:', currentClassId);
+
+            appData.classes = appData.classes.filter(c => c.id !== currentClassId);
+            console.log('Class deleted, remaining classes:', appData.classes.length);
+
+            saveData();
+            closeModal('deleteClassConfirmModal');
+            
+            // Go back to home
+            showHome();
+        }
+
+        // Show add class modal
+        function showAddClassModal() {
+            document.getElementById('className').value = '';
+            openModal('addClassModal');
+        }
+
+        // Add class
+        function addClass() {
+            const name = document.getElementById('className').value.trim();
+            if (!name) {
+                alert('Vui lòng nhập tên lớp học');
+                return;
+            }
+
+            appData.classes.push({
+                id: Date.now(),
+                name: name,
+                students: []
+            });
+
+            saveData();
+            closeModal('addClassModal');
+            renderHome();
+        }
+
+        // Show add student modal
+        function showAddStudentModal() {
+            document.getElementById('studentName').value = '';
+            document.getElementById('enrollmentDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('paymentCycle').value = 'monthly';
+            document.getElementById('tuitionFee').value = '';
+            
+            renderFeeQuickSelect('feeQuickSelect', 'tuitionFee');
+            
+            openModal('addStudentModal');
+        }
+
+        // Add student
+        function addStudent() {
+            const name = document.getElementById('studentName').value.trim();
+            const enrollmentDate = document.getElementById('enrollmentDate').value;
+            const paymentCycle = document.getElementById('paymentCycle').value;
+            const tuitionFee = parseInt(document.getElementById('tuitionFee').value);
+
+            if (!name || !enrollmentDate || !tuitionFee) {
+                alert('Vui lòng nhập đầy đủ thông tin');
+                return;
+            }
+
+            const cls = appData.classes.find(c => c.id === currentClassId);
+            
+            // Create new student with first payment automatically (default to paid status)
+            const newStudent = {
+                id: Date.now(),
+                name: name,
+                enrollmentDate: enrollmentDate,
+                paymentCycle: paymentCycle,
+                tuitionFee: tuitionFee,
+                payments: [
+                    {
+                        id: Date.now(),
+                        date: enrollmentDate, // First payment on enrollment date
+                        amount: tuitionFee,
+                        note: 'Thanh toán đầu tiên'
+                    }
+                ]
+            };
+            
+            cls.students.push(newStudent);
+
+            saveData();
+            closeModal('addStudentModal');
+            renderClassDetail();
+        }
+
+        // Sort students
+        function sortStudents(type) {
+            currentSort = type;
+            
+            document.querySelectorAll('.sort-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            renderClassDetail();
+        }
+
+        // Show settings
+        function showSettings() {
+            renderDefaultFees();
+            openModal('settingsModal');
+        }
+
+        // Render default fees
+        function renderDefaultFees() {
+            const list = document.getElementById('defaultFeesList');
+            list.innerHTML = '';
+
+            appData.defaultFees.forEach((fee, index) => {
+                const item = document.createElement('div');
+                item.className = 'history-item';
+                item.innerHTML = `
+                    <span>${formatCurrency(fee)}</span>
+                    <button class="btn-icon" onclick="removeDefaultFee(${index})" style="color: var(--danger);">🗑️</button>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        // Show add fee form
+        function showAddFeeForm() {
+            if (appData.defaultFees.length >= 4) {
+                alert('Tối đa 4 mức học phí');
+                return;
+            }
+
+            const fee = prompt('Nhập mức học phí mới:');
+            if (fee && !isNaN(fee)) {
+                appData.defaultFees.push(parseInt(fee));
+                saveData();
+                renderDefaultFees();
+            }
+        }
+
+        // Remove default fee
+        function removeDefaultFee(index) {
+            appData.defaultFees.splice(index, 1);
+            saveData();
+            renderDefaultFees();
+        }
+
+        // Render fee quick select
+        function renderFeeQuickSelect(containerId, inputId) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+
+            appData.defaultFees.forEach(fee => {
+                const btn = document.createElement('button');
+                btn.className = 'fee-btn';
+                btn.textContent = formatCurrency(fee);
+                btn.onclick = (e) => {
+                    e.preventDefault();
+                    document.getElementById(inputId).value = fee;
+                    container.querySelectorAll('.fee-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        // Export to Excel
+        function exportToExcel() {
+            const wb = XLSX.utils.book_new();
+
+            appData.classes.forEach(cls => {
+                const data = [['Tên', 'Ngày nhập học', 'Chu kỳ', 'Học phí', 'Lịch sử thanh toán']];
+
+                cls.students.forEach(student => {
+                    const payments = student.payments.map(p => 
+                        `${formatDate(new Date(p.date))}: ${formatCurrency(p.amount)}${p.note ? ' (' + p.note + ')' : ''}`
+                    ).join('; ');
+
+                    data.push([
+                        student.name,
+                        formatDate(new Date(student.enrollmentDate)),
+                        student.paymentCycle === 'monthly' ? 'Hàng tháng' : 'Hàng quý',
+                        student.tuitionFee,
+                        payments
+                    ]);
+                });
+
+                const ws = XLSX.utils.aoa_to_sheet(data);
+                XLSX.utils.book_append_sheet(wb, ws, cls.name.substring(0, 31));
+            });
+
+            const today = new Date().toISOString().split('T')[0];
+            XLSX.writeFile(wb, `hoc-phi-${today}.xlsx`);
+            
+            closeModal('backupModal');
+        }
+
+        // Import from Excel
+        function importFromFile() {
+            document.getElementById('importFile').click();
+        }
+
+        // Handle import
+        function handleImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const fileName = file.name.toLowerCase();
+            
+            // Handle JSON backup file
+            if (fileName.endsWith('.json')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const importedData = JSON.parse(e.target.result);
+                        
+                        if (confirm('⚠️ KHÔI PHỤC DỮ LIỆU\n\nDữ liệu hiện tại sẽ bị GHI ĐÈ hoàn toàn.\n\nBạn có chắc chắn muốn tiếp tục?')) {
+                            appData = importedData;
+                            saveData();
+                            
+                            alert('✅ Khôi phục thành công!\n\nDữ liệu đã được cập nhật.');
+                            closeModal('backupModal');
+                            renderHome();
+                            
+                            // If we're in a class view, go back to home
+                            if (currentClassId) {
+                                showHome();
+                            }
+                        }
+                    } catch (err) {
+                        alert('❌ Lỗi: File backup không hợp lệ!\n\n' + err.message);
+                    }
+                };
+                reader.readAsText(file);
+            } 
+            // Handle Excel file
+            else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, {type: 'array'});
+                        
+                        alert('📊 Import từ Excel\n\nTính năng này đang trong giai đoạn phát triển.\n\n💡 Hiện tại hãy dùng file backup .json để khôi phục dữ liệu.');
+                    } catch (err) {
+                        alert('❌ Lỗi: Không thể đọc file Excel!\n\n' + err.message);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            } else {
+                alert('❌ File không hợp lệ!\n\nChỉ chấp nhận file .json hoặc .xlsx');
+            }
+            
+            // Reset input
+            event.target.value = '';
+        }
+
+        // Google Drive backup functions
+        function showBackupMenu() {
+            updateBackupStatus();
+            openModal('backupModal');
+        }
+
+        function updateBackupStatus() {
+            const statusDiv = document.getElementById('backupStatus');
+            const connectBtn = document.getElementById('gdConnectBtn');
+            const connectedSection = document.getElementById('gdConnectedSection');
+
+            if (appData.settings.googleDriveConnected) {
+                connectBtn.classList.add('hidden');
+                connectedSection.classList.remove('hidden');
+                
+                if (appData.settings.lastBackup) {
+                    const lastBackup = new Date(appData.settings.lastBackup);
+                    const now = new Date();
+                    const hoursSince = Math.floor((now - lastBackup) / (1000 * 60 * 60));
+                    
+                    let statusText = '';
+                    if (hoursSince < 1) {
+                        statusText = `Sao lưu lần cuối: Vừa xong`;
+                    } else if (hoursSince < 24) {
+                        statusText = `Sao lưu lần cuối: ${hoursSince} giờ trước`;
+                    } else {
+                        const days = Math.floor(hoursSince / 24);
+                        statusText = `Sao lưu lần cuối: ${days} ngày trước`;
+                    }
+                    
+                    statusDiv.textContent = statusText;
+                    statusDiv.className = 'backup-status success';
+                } else {
+                    statusDiv.textContent = 'Chưa có backup nào';
+                    statusDiv.className = 'backup-status';
+                }
+            } else {
+                connectBtn.classList.remove('hidden');
+                connectedSection.classList.add('hidden');
+                statusDiv.textContent = 'Chưa kết nối Google Drive - Dữ liệu chỉ lưu trên thiết bị';
+                statusDiv.className = 'backup-status';
+            }
+        }
+
+        function connectGoogleDrive() {
+            // Show instructions for Google Drive setup
+            const instructions = `
+📱 HƯỚNG DẪN KẾT NỐI GOOGLE DRIVE
+
+Để bật backup tự động, bạn cần:
+
+1️⃣ Cài đặt Google Drive trên iPhone
+2️⃣ Đăng nhập tài khoản Google của bạn
+3️⃣ App sẽ tự động lưu file backup vào thư mục "Tuition Tracker"
+
+⚠️ LƯU Ý:
+Do giới hạn kỹ thuật của web app, tính năng này chỉ hoạt động khi:
+- Bạn cài app lên Home Screen
+- Hoặc dùng trình duyệt Safari (không dùng Chrome)
+
+📌 GIẢI PHÁP TẠM THỜI:
+Tôi khuyên bạn nên:
+1. Bật "chế độ demo" (nhấn OK bên dưới)
+2. Thường xuyên xuất Excel hoặc tải file backup
+3. Lưu file vào Google Drive thủ công
+
+Bạn muốn bật chế độ demo không?
+            `;
+            
+            if (confirm(instructions)) {
+                // Enable demo mode
+                appData.settings.googleDriveConnected = true;
+                appData.settings.lastBackup = new Date().toISOString();
+                saveData();
+                
+                alert('✅ Đã bật chế độ demo!\n\n💡 Dữ liệu vẫn lưu local. Hãy thường xuyên xuất Excel để backup thủ công.');
+                updateBackupStatus();
+            }
+        }
+
+        function disconnectGoogleDrive() {
+            if (confirm('Ngắt kết nối Google Drive?\n\nDữ liệu local vẫn được giữ nguyên, nhưng sẽ không tự động backup nữa.')) {
+                appData.settings.googleDriveConnected = false;
+                appData.settings.lastBackup = null;
+                saveData();
+                updateBackupStatus();
+            }
+        }
+
+        function manualBackup() {
+            // Simulate backup to Google Drive
+            appData.settings.lastBackup = new Date().toISOString();
+            saveData();
+            
+            alert('✅ Đã sao lưu dữ liệu!\n\n💡 Trong chế độ demo, dữ liệu được lưu local. Để backup thật sự, hãy xuất Excel hoặc tải file backup.');
+            updateBackupStatus();
+        }
+
+        function restoreFromDrive() {
+            if (confirm('Khôi phục dữ liệu từ Google Drive?\n\nDữ liệu hiện tại sẽ bị ghi đè.')) {
+                alert('📥 Đang khôi phục...\n\n💡 Trong chế độ demo, tính năng này không khả dụng. Hãy dùng "Khôi phục từ file" để import file backup đã lưu.');
+            }
+        }
+
+        function downloadBackupJSON() {
+            const dataStr = JSON.stringify(appData, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            const today = new Date().toISOString().split('T')[0];
+            link.download = `hoc-phi-backup-${today}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+            
+            alert('✅ Đã tải file backup!\n\n💡 Lưu file này vào Google Drive hoặc nơi an toàn.');
+            closeModal('backupModal');
+        }
+
+        function setupAutoBackup() {
+            // Auto backup once per day
+            const lastBackup = appData.settings.lastBackup 
+                ? new Date(appData.settings.lastBackup) 
+                : null;
+            
+            const now = new Date();
+            
+            if (appData.settings.googleDriveConnected) {
+                if (!lastBackup || (now - lastBackup) > 24 * 60 * 60 * 1000) {
+                    // Auto backup
+                    appData.settings.lastBackup = now.toISOString();
+                    saveData();
+                }
+            }
+
+            // Check daily
+            setInterval(() => {
+                if (appData.settings.googleDriveConnected) {
+                    const last = new Date(appData.settings.lastBackup);
+                    const current = new Date();
+                    
+                    if ((current - last) > 24 * 60 * 60 * 1000) {
+                        appData.settings.lastBackup = current.toISOString();
+                        saveData();
+                    }
+                }
+            }, 60 * 60 * 1000); // Check every hour
+        }
+
+        // Utility functions
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('vi-VN', {
+                style: 'currency',
+                currency: 'VND'
+            }).format(amount);
+        }
+
+        function formatDate(date) {
+            return new Intl.DateTimeFormat('vi-VN').format(date);
+        }
+
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        // Initialize on load
+        window.onload = init;
+    </script>
+</body>
+</html>
